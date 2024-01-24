@@ -8,6 +8,7 @@ import {
 import React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { z } from 'zod';
+import { debounce } from '@mui/material/utils';
 
 interface AutoCompleteInterface {
   id: string;
@@ -29,11 +30,32 @@ export const AutoCompleteInput: React.FC<AutoCompleteInterface> = ({
     setValue,
     watch,
     clearErrors,
-    trigger,
     formState: { errors },
   } = useFormContext();
 
   const selectedValue = watch(id, '');
+  const [options, setOptions] = React.useState(data);
+
+  const fetchDebounced = debounce((inputValue: string) => {
+    const lowercaseInputValue = inputValue.toLowerCase();
+
+    if (inputValue.length < 3) return;
+    const filteredOptions = data.filter((nome) =>
+      nome.nome.toLowerCase().includes(lowercaseInputValue)
+    );
+    setOptions(filteredOptions);
+  }, 400);
+
+  const handleInputChange = (
+    _: React.SyntheticEvent,
+    newInputValue: string
+  ) => {
+    if (newInputValue.trim() === '') {
+      setOptions([]);
+      return;
+    }
+    fetchDebounced(newInputValue);
+  };
 
   return (
     <React.Fragment>
@@ -48,8 +70,10 @@ export const AutoCompleteInput: React.FC<AutoCompleteInterface> = ({
           clearErrors(id);
           setValue(id, newValue ? newValue.id : null);
         }}
+        noOptionsText={'Nenhuma opção selecionada'}
         id={id}
-        options={data}
+        options={options}
+        onInputChange={handleInputChange}
         renderInput={(params) => (
           <TextField
             {...params}
@@ -72,7 +96,7 @@ export const AutoCompleteInput: React.FC<AutoCompleteInterface> = ({
       <input
         type="hidden"
         {...register(id, { required: `${label} é obrigatório` })}
-        value={selectedValue}
+        value={selectedValue ?? ''}
       />
     </React.Fragment>
   );
